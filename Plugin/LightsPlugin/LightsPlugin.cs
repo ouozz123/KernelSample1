@@ -1,7 +1,6 @@
 ﻿using KernelSample.Plugin.LightsPlugin.Model;
 using Microsoft.SemanticKernel;
 using System.ComponentModel;
-using System.Reflection;
 using System.Text.Json;
 
 namespace KernelSample.Plugin.LightsPlugin;

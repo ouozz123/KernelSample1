@@ -1,10 +1,4 @@
-﻿using KernelSample.Converter;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
-using System.Runtime.Serialization;
-using System.Text;
+﻿using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 
 namespace KernelSample.Plugin.WidgetFactory.Model;

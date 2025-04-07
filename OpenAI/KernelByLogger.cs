@@ -1,10 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Text;
 
 namespace KernelSample.OpenAI;
 internal class KernelByLogger : Sample
