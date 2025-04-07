@@ -3,9 +3,6 @@ using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Microsoft.SemanticKernel.Data;
 using Qdrant.Client;
-using Qdrant.Client.Grpc;
-using System.Collections.Generic;
-using System.Threading;
 
 namespace KernelSample.Qdrant;
 

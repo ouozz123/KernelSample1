@@ -6,10 +6,16 @@ using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Microsoft.SemanticKernel.Embeddings;
 using System.Text.Json;
 using Document = Microsoft.KernelMemory.Document;
+using Qdrant.Client; // Ensure the correct namespace is imported
 using QdrantClient = Qdrant.Client.QdrantClient;
+using Qdrant.Client.Grpc;
+using static Qdrant.Client.Grpc.Conditions;
+using Range = Qdrant.Client.Grpc.Range;
 
-namespace KernelSample.Qdrant;
-internal class ImportHotalDataForQdrantSample2 : Sample
+
+namespace KernelSample.Qdrant; // static import Conditions to easily build filtering
+
+internal class ImportHotalDataForQdrantSampleByHotel2 : Sample
 {
     private static MemoryWebClient memoryServiceClient = null!;
 
@@ -32,80 +38,64 @@ internal class ImportHotalDataForQdrantSample2 : Sample
 
             .Build();
 
-        var hotelCollectionName = "skhotels";
+        var hotelCollectionName = "hotel2";
         var qdrantVectorStoreOptions = new QdrantVectorStoreOptions() { HasNamedVectors = false };
-        var qdrant = new QdrantClient("localhost");
-        var vectorStore = new QdrantVectorStore(qdrant, qdrantVectorStoreOptions);
-        var hotelDefinition = new VectorStoreRecordDefinition
-        {
-            Properties = new List<VectorStoreRecordProperty>
-                {
-                    new VectorStoreRecordKeyProperty("HotelId", typeof(ulong)),
-                    new VectorStoreRecordDataProperty("Type", typeof(string)) { IsFilterable = true },
-                    new VectorStoreRecordDataProperty("Label", typeof(string)) { IsFilterable = true },
-                    new VectorStoreRecordDataProperty("IsSpringLabel", typeof(bool)) { IsFilterable = true },
-                    new VectorStoreRecordDataProperty("CityName", typeof(string)) { IsFilterable = true },
-                    new VectorStoreRecordDataProperty("Area", typeof(string)) { IsFilterable = true },
-                    new VectorStoreRecordDataProperty("PostalCode", typeof(string)) { IsFilterable = false },
-                    new VectorStoreRecordDataProperty("Phone", typeof(string)) { IsFilterable = false },
-                    new VectorStoreRecordDataProperty("Email", typeof(string)) { IsFilterable = false },
-                    new VectorStoreRecordDataProperty("Link", typeof(string)) { IsFilterable = false },
-                    new VectorStoreRecordDataProperty("OpeningDate", typeof(string)) { IsFilterable = false },
-                    new VectorStoreRecordDataProperty("Address", typeof(string)) { IsFilterable = false },
-                    new VectorStoreRecordDataProperty("HotelName", typeof(string)) { IsFilterable = true },
-                    new VectorStoreRecordDataProperty("Description", typeof(string)) { IsFullTextSearchable = true },
-                    new VectorStoreRecordVectorProperty("DescriptionEmbedding", typeof(ReadOnlyMemory<float>)) { Dimensions = 1536, DistanceFunction = DistanceFunction.CosineSimilarity, IndexKind = IndexKind.Hnsw },
-                }
-        };
 
-        // var hotel = vectorStore.GetCollection<ulong, VectorStoreGenericDataModel<ulong>>(
-        //     hotelCollectionName,
-        //     hotelDefinition);
-        var hotel = vectorStore.GetCollection<ulong, Hotel>(hotelCollectionName);
+        var grpcClient = new QdrantGrpcClient("localhost");
+        var qdrant = new QdrantClient(grpcClient);
+        var vectorStore = new QdrantVectorStore(qdrant, qdrantVectorStoreOptions);
+
+        var hotel2 = vectorStore.GetCollection<ulong, Hotel2>(hotelCollectionName);
         var embeddingGenerationService = kernelBuilder.GetRequiredService<ITextEmbeddingGenerationService>();
 
-        // await hotel.DeleteCollectionAsync();
-        // await hotel.CreateCollectionIfNotExistsAsync();
 
-        // var model = new Hotel()
+        // var text = await ReadFileLinesAsync("旅宿列表匯出_20250401113015_part2.txt");
+        // var models = await ConvertModel(text, embeddingGenerationService, true);
+
+        var keyword = await embeddingGenerationService.GenerateEmbeddingAsync("請問位於臺中市大雅區西寶里雅潭路的旅館有哪些?");
+
+        var result = await qdrant.SearchAsync(hotelCollectionName, keyword);
+
+        foreach (var item in result)
+        {
+            Console.WriteLine($"找到匹配：{item.Payload} - {item.Score} ");
+        }   
+
+        // await hotel2.DeleteCollectionAsync();
+        // await hotel2.CreateCollectionIfNotExistsAsync();
+
+        // var model = new Hotel2()
         // {
-        //     Address = "台北市信義區松高路12號",
-        //     CityName = "台北市",
-        //     HotelName = "台北君悅酒店",
         //     HotelId = 1,
-        //     IsSpringLabel = true,
-        //     Label = "五星級",
-        //     OpeningDate = "2023-01-01",
-        //     Phone = "02-1234-5678",
-        //     PostalCode = "110",
-        //     Type = "商務旅館",
-        //     Area = "信義區"
+        //     Address = "台北市信義區松高路12號",
+        //     HotelName = "台北君悅酒店",
+        //     Description = "台北君悅酒店是一家豪華的五星級酒店，提供高端住宿和卓越的服務。",
         // };
         // model.DescriptionEmbedding =  await embeddingGenerationService.GenerateEmbeddingAsync(model.Description);
-        // var upsertResult = await hotel.UpsertAsync(model);
-        // Console.WriteLine($"成功更新或插入的 ID：{upsertResult}");
 
 
-        //案例1: 用 KEY 搜尋
-        var record1 = await hotel.GetAsync(1, new() { IncludeVectors = true });
+        // await foreach (var upsertResult in hotel2.UpsertBatchAsync(models))
+        //     Console.WriteLine($"成功更新或插入的 ID：{upsertResult}");
 
-        if (record1 != null)
-            // Console.WriteLine($"1.搜尋結果：{record1.Data["HotelName"]} - {record1.Data["Description"]}");
-            Console.WriteLine($"搜尋結果：{record1.HotelName} - {record1.Description}");
+        // //案例1: 用 KEY 搜尋
+        // var record1 = await hotel2.GetAsync(1, new() { IncludeVectors = false });
+
+        // if (record1 != null)
+        //     // Console.WriteLine($"1.搜尋結果：{record1.Data["HotelName"]} - {record1.Data["Description"]}");
+        //     Console.WriteLine($"搜尋結果：{record1.HotelName} - {record1.Description}");
 
         // Console.WriteLine("--------------------------------------------------");
 
         // //案例2: 用向量搜尋
-        // var keyword = await embeddingGenerationService.GenerateEmbeddingAsync("請問台北市的旅館有哪些?");
-        // var record2 = await hotel.VectorizedSearchAsync(keyword, new(){
-        //     Top = 5,
-        //     VectorProperty = r => r.Data["DescriptionEmbedding"],
+        // var keyword2 = await embeddingGenerationService.GenerateEmbeddingAsync("請問台北市的旅館有哪些? 沒有就不用回傳");
+        // var record2 = await hotel2.VectorizedSearchAsync(keyword2, new(){
+        //     Top = 5
         // });
 
         // if (record2 != null)
         // {
         //     await foreach (var item in record2.Results)
-        //         Console.WriteLine($"2.搜尋結果：{item.Record.Data["HotelName"]} - {item.Record.Data["Description"]}");
+        //             Console.WriteLine($"2.搜尋結果：{item.Record.HotelName} - {item.Record.Description} - {item.Score}");
         // }
     }
 
@@ -214,7 +204,7 @@ internal class ImportHotalDataForQdrantSample2 : Sample
     private static async Task<List<string>> ReadFileLinesAsync(string fileName)
     {
         string projectDirectory = Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName;
-        string filePath = Path.Combine(projectDirectory, "Files", "旅宿列表匯出_20250401113015_part1.txt");
+        string filePath = Path.Combine(projectDirectory, "Files", fileName);
         Console.WriteLine("filePath:{0}", filePath);
 
 
@@ -242,31 +232,25 @@ internal class ImportHotalDataForQdrantSample2 : Sample
     }
 
 #pragma warning disable SKEXP0010 // 類型僅供評估之用，可能會在未來更新中變更或移除。抑制此診斷以繼續。
-    private async Task<List<Hotel>> ConvertModel(List<string> lines, ITextEmbeddingGenerationService services, bool isEmbedding = false)
+    private async Task<List<Hotel2>> ConvertModel(List<string> lines, ITextEmbeddingGenerationService services, bool isEmbedding = false)
 #pragma warning restore SKEXP0010 // 類型僅供評估之用，可能會在未來更新中變更或移除。抑制此診斷以繼續。
     {
-        List<Hotel> hotels = new List<Hotel>();
+        List<Hotel2> hotels = new List<Hotel2>();
         ulong i = 1;
         foreach (var item in lines)
         {
             var itemArr = item.Split(',');
 
-            var hotel = new Hotel()
+            var hotel = new Hotel2()
             {
                 HotelId = i++,
                 // OpeningDate = itemArr[0],
-                Type = itemArr[2],
-                Label = itemArr[3],
-                IsSpringLabel = itemArr[4] == "是",
                 HotelName = itemArr[5],
-                CityName = itemArr[6],
-                Area = itemArr[7],
-                PostalCode = itemArr[8],
-                Address = itemArr[9],
-                Phone = itemArr[10],
-                Email = itemArr[13],
-                Link = itemArr[14]
+                Address = itemArr[9]
             };
+
+            hotel.Description = $"旅館名稱:{hotel.HotelName}，旅館縣市:{itemArr[6]}，旅館地址:{hotel.Address}。";
+            Console.WriteLine("hotel.Description: {0}", hotel.Description);
 
             if (isEmbedding)
                 hotel.DescriptionEmbedding = await services.GenerateEmbeddingAsync(hotel.Description);

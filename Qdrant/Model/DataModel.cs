@@ -1,8 +1,5 @@
 ﻿using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel.Data;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace KernelSample.Qdrant.Model;
 public sealed class DataModel
