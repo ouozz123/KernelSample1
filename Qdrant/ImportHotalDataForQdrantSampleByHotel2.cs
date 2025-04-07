@@ -1,17 +1,14 @@
 ﻿using KernelSample.Qdrant.Model;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.VectorData;
 using Microsoft.KernelMemory;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Microsoft.SemanticKernel.Embeddings;
+using Qdrant.Client.Grpc;
 using System.Text.Json;
 using Document = Microsoft.KernelMemory.Document;
-using Qdrant.Client; // Ensure the correct namespace is imported
 using QdrantClient = Qdrant.Client.QdrantClient;
-using Qdrant.Client.Grpc;
-using static Qdrant.Client.Grpc.Conditions;
-using Range = Qdrant.Client.Grpc.Range;
-
 
 namespace KernelSample.Qdrant; // static import Conditions to easily build filtering
 
@@ -22,6 +19,9 @@ internal class ImportHotalDataForQdrantSampleByHotel2 : Sample
 
     internal override async Task RunAsync(string apiKey)
     {
+        var dimensions = 1536; // 向量的維度,原本是128
+        var httpClient = HttpLogger.GetHttpClient(true);
+
 #pragma warning disable SKEXP0010 // 類型僅供評估之用，可能會在未來更新中變更或移除。抑制此診斷以繼續。
         var kernelBuilder = Kernel
             .CreateBuilder()
@@ -31,8 +31,8 @@ internal class ImportHotalDataForQdrantSampleByHotel2 : Sample
                     apiKey: apiKey,
                     //orgId: "YOUR_ORG_ID",         // Optional organization id.
                     //serviceId: "YOUR_SERVICE_ID", // Optional; for targeting specific services within Semantic Kernel
-                    httpClient: HttpLogger.GetHttpClient(true), // Optional; if not provided, the HttpClient from the kernel will be used 
-                    dimensions: 1536              // Optional number of dimensions to generate embeddings with.
+                    httpClient: httpClient, // Optional; if not provided, the HttpClient from the kernel will be used 
+                    dimensions: dimensions              // Optional number of dimensions to generate embeddings with.
                 )
 #pragma warning restore SKEXP0010 // 類型僅供評估之用，可能會在未來更新中變更或移除。抑制此診斷以繼續。
 
@@ -41,62 +41,80 @@ internal class ImportHotalDataForQdrantSampleByHotel2 : Sample
         var hotelCollectionName = "hotel2";
         var qdrantVectorStoreOptions = new QdrantVectorStoreOptions() { HasNamedVectors = false };
 
+        #region 建立 logger
+
+        // 建立 LoggerFactory 實例
+        var loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder
+                .AddConsole() // 添加控制台日誌提供者
+                .SetMinimumLevel(LogLevel.Debug); // 設置最低日誌級別
+        });
+
+        #endregion
+
         var grpcClient = new QdrantGrpcClient("localhost");
-        var qdrant = new QdrantClient(grpcClient);
+        var qdrant = new QdrantClient("localhost1", loggerFactory: loggerFactory);
         var vectorStore = new QdrantVectorStore(qdrant, qdrantVectorStoreOptions);
 
         var hotel2 = vectorStore.GetCollection<ulong, Hotel2>(hotelCollectionName);
         var embeddingGenerationService = kernelBuilder.GetRequiredService<ITextEmbeddingGenerationService>();
 
+        #region 取得檔案資訊
 
-        // var text = await ReadFileLinesAsync("旅宿列表匯出_20250401113015_part2.txt");
-        // var models = await ConvertModel(text, embeddingGenerationService, true);
+        //var text = await ReadFileLinesAsync("旅宿列表匯出_20250401113015_part2.txt");
+        //var models = await ConvertModel(text, embeddingGenerationService, true);
 
-        var keyword = await embeddingGenerationService.GenerateEmbeddingAsync("請問位於臺中市大雅區西寶里雅潭路的旅館有哪些?");
+        #endregion
 
-        var result = await qdrant.SearchAsync(hotelCollectionName, keyword);
+        #region 其他查詢方式
+        // var keyword = await embeddingGenerationService.GenerateEmbeddingAsync("請問位於臺中市大雅區西寶里雅潭路的旅館有哪些?");
 
-        foreach (var item in result)
-        {
-            Console.WriteLine($"找到匹配：{item.Payload} - {item.Score} ");
-        }   
+        // var result = await qdrant.SearchAsync(hotelCollectionName, keyword);
 
-        // await hotel2.DeleteCollectionAsync();
-        // await hotel2.CreateCollectionIfNotExistsAsync();
-
-        // var model = new Hotel2()
+        // foreach (var item in result)
         // {
-        //     HotelId = 1,
-        //     Address = "台北市信義區松高路12號",
-        //     HotelName = "台北君悅酒店",
-        //     Description = "台北君悅酒店是一家豪華的五星級酒店，提供高端住宿和卓越的服務。",
-        // };
-        // model.DescriptionEmbedding =  await embeddingGenerationService.GenerateEmbeddingAsync(model.Description);
+        //     Console.WriteLine($"找到匹配：{item.Payload} - {item.Score} ");
+        // }  
+        #endregion
 
+        #region 建 table 跟新增資料
 
-        // await foreach (var upsertResult in hotel2.UpsertBatchAsync(models))
-        //     Console.WriteLine($"成功更新或插入的 ID：{upsertResult}");
+        //await hotel2.DeleteCollectionAsync();
+        //await hotel2.CreateCollectionIfNotExistsAsync();
 
-        // //案例1: 用 KEY 搜尋
+        //await foreach (var upsertResult in hotel2.UpsertBatchAsync(models))
+        //    Console.WriteLine($"成功更新或插入的 ID：{upsertResult}");
+
+        #endregion
+
+        #region hotel GetAsync
+
+        // //案例1: 用KEY搜尋
         // var record1 = await hotel2.GetAsync(1, new() { IncludeVectors = false });
 
         // if (record1 != null)
         //     // Console.WriteLine($"1.搜尋結果：{record1.Data["HotelName"]} - {record1.Data["Description"]}");
-        //     Console.WriteLine($"搜尋結果：{record1.HotelName} - {record1.Description}");
+        //     Console.WriteLine($"搜尋結果：{record1.HotelName} - {record1.Description}"); weq 
 
         // Console.WriteLine("--------------------------------------------------");
 
-        // //案例2: 用向量搜尋
-        // var keyword2 = await embeddingGenerationService.GenerateEmbeddingAsync("請問台北市的旅館有哪些? 沒有就不用回傳");
-        // var record2 = await hotel2.VectorizedSearchAsync(keyword2, new(){
-        //     Top = 5
-        // });
+        #endregion
 
-        // if (record2 != null)
-        // {
-        //     await foreach (var item in record2.Results)
-        //             Console.WriteLine($"2.搜尋結果：{item.Record.HotelName} - {item.Record.Description} - {item.Score}");
-        // }
+        #region 向量查詢
+
+        //案例2: 用向量搜尋
+        var keyword2 = await embeddingGenerationService.GenerateEmbeddingAsync("請問南投縣的旅館有哪些?");
+        var record2 = await hotel2.VectorizedSearchAsync(keyword2, new()
+        {
+            Top = 3
+        });
+
+        if (record2 != null)
+           await foreach (var item in record2.Results)
+                Console.WriteLine($"2.搜尋結果：{item.Record.HotelName} - {item.Record.Description} - {item.Score}");
+
+        #endregion
     }
 
     private async Task CreateQdrantProint(List<Hotel> models, IVectorStoreRecordCollection<ulong, Hotel> collection)

@@ -16,6 +16,7 @@ public class HttpLogger : DelegatingHandler
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        Console.ForegroundColor = ConsoleColor.Yellow;
         Console.WriteLine("Request:");
         Console.WriteLine(request.ToString());
         if (request.Content != null)
@@ -27,6 +28,7 @@ public class HttpLogger : DelegatingHandler
 
         HttpResponseMessage response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
+        Console.ForegroundColor = ConsoleColor.Green;
         Console.WriteLine("Response:");
         Console.WriteLine(response.ToString());
         if (response.Content != null)
@@ -35,7 +37,7 @@ public class HttpLogger : DelegatingHandler
         }
 
         Console.WriteLine();
-
+        Console.ForegroundColor = ConsoleColor.White;
         return response;
     }
 }
