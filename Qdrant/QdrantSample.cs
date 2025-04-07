@@ -25,7 +25,6 @@ internal class QdrantSample : Sample
                 )
 #pragma warning restore SKEXP0010 // 類型僅供評估之用，可能會在未來更新中變更或移除。抑制此診斷以繼續。
 
-            .AddQdrantVectorStore()
             .Build();
 
 #pragma warning disable SKEXP0020 // 類型僅供評估之用，可能會在未來更新中變更或移除。抑制此診斷以繼續。

@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.KernelMemory;
-using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Microsoft.SemanticKernel.Memory;
@@ -8,7 +7,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.IO;
 
 namespace KernelSample.Qdrant;
-internal class SearchQdrantByKernelMemory : Sample
+internal class SearchQdrantByKernelMemory_fall1 : Sample
 {
     internal override async Task RunAsync(string apiKey)
     {
@@ -35,11 +34,24 @@ internal class SearchQdrantByKernelMemory : Sample
             httpClient: httpClient,
             apiKey: apiKey);
 
-        var memory = new MemoryBuilder()
-            .WithQdrantMemoryStore(httpClient, dimensions, qarantHttpClient)
-            .WithTextEmbeddingGeneration(embeddingGeneration)
-            .Build();
+        var memory = new KernelMemoryBuilder()
+            .WithOpenAITextGeneration(new () { EmbeddingModel= embeddingModel, TextModel = "gpt-4o-mini", APIKey = apiKey })
+            .WithQdrantMemoryDb("http://localhost:6333", null)
+            .WithSemanticKernelTextEmbeddingGenerationService(embeddingGeneration, new()
+            {
+                MaxTokenTotal = 4096,
+            }, loggerFactory: loggerFactory)
+            .Build<MemoryServerless>(new KernelMemoryBuilderBuildOptions()
+            {
+                AllowMixingVolatileAndPersistentData = true
+            });
+        //.WithQdrantMemoryStore(httpClient, dimensions, qarantHttpClient)
+        //.WithTextEmbeddingGeneration
+        //.Build();
 #pragma warning restore SKEXP0010 // 類型僅供評估之用，可能會在未來更新中變更或移除。抑制此診斷以繼續。
+
+        var result = await memory.AskAsync("請幫我查詢台北市有哪些旅館");
+        Console.WriteLine(result.ToJson());
 
         //var qdrantVectorStoreOptions = new QdrantVectorStoreOptions() { HasNamedVectors = false };
 
@@ -48,14 +60,14 @@ internal class SearchQdrantByKernelMemory : Sample
         //Console.WriteLine($"Collections: {string.Join(", ", collections)}");
 
         //搜尋
-        var hotelCollectionName = "hotel2";
-        var searchResult = memory.SearchAsync(hotelCollectionName, "查詢南投縣有哪些旅館", minRelevanceScore: 0.3).ConfigureAwait(false);
+        //var hotelCollectionName = "hotel2";
+        //var searchResult = memory.SearchAsync(hotelCollectionName, "查詢南投縣有哪些旅館", minRelevanceScore: 0.3).ConfigureAwait(false);
 
-        await foreach (var item in searchResult)
-        {
-            //轉json輸出
-            var json = item.ToJson();
-            Console.WriteLine(json);
-        }
+        //await foreach (var item in searchResult)
+        //{
+        //    //轉json輸出
+        //    var json = item.ToJson();
+        //    Console.WriteLine(json);
+        //}
     }
 }

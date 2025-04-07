@@ -1,4 +1,5 @@
-﻿using KernelSample.Qdrant.Model;
+﻿using KernelSample.Plugin.HotelPlugin;
+using KernelSample.Qdrant.Model;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.VectorData;
 using Microsoft.KernelMemory;
@@ -37,6 +38,8 @@ internal class ImportHotalDataForQdrantSampleByHotel2 : Sample
 #pragma warning restore SKEXP0010 // 類型僅供評估之用，可能會在未來更新中變更或移除。抑制此診斷以繼續。
 
             .Build();
+
+        kernelBuilder.Plugins.AddFromType<HotelPlugin>();
 
         var hotelCollectionName = "hotel2";
         var qdrantVectorStoreOptions = new QdrantVectorStoreOptions() { HasNamedVectors = false };

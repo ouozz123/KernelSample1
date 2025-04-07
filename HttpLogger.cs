@@ -1,4 +1,8 @@
-﻿namespace KernelSample;
+﻿using Google.Protobuf;
+using System.IO.Compression;
+using System.Text;
+
+namespace KernelSample;
 public class HttpLogger : DelegatingHandler
 {
     public static HttpClient GetHttpClient(bool log = false)
@@ -16,6 +20,10 @@ public class HttpLogger : DelegatingHandler
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
+        // 設置 Accept-Charset 標頭為 UTF-8
+        request.Headers.AcceptCharset.Add(new System.Net.Http.Headers.StringWithQualityHeaderValue("utf-8"));
+
+
         Console.ForegroundColor = ConsoleColor.Yellow;
         Console.WriteLine("Request:");
         Console.WriteLine(request.ToString());
@@ -33,11 +41,45 @@ public class HttpLogger : DelegatingHandler
         Console.WriteLine(response.ToString());
         if (response.Content != null)
         {
-            Console.WriteLine(await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false));
+            var content = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+
+            var contextType = response.Headers.Select(x => x.Key == "application/grpc").FirstOrDefault();
+
+            //if (contextType != null)
+            //    content = DecompressGrpcResponse(content, "gzip"); // or "identity", "deflate"
+
+            // 檢查伺服器返回的編碼
+            var charset = response.Content.Headers.ContentType?.CharSet ?? "utf-8";
+
+            var encoding = Encoding.GetEncoding(charset);
+            var contentString = encoding.GetString(content);
+            Console.WriteLine(contentString);
         }
 
         Console.WriteLine();
         Console.ForegroundColor = ConsoleColor.White;
         return response;
+    }
+
+    public static byte[] DecompressGrpcResponse(byte[] data, string encoding)
+    {
+        if (encoding == "gzip")
+        {
+            using var compressedStream = new GZipStream(new MemoryStream(data), CompressionMode.Decompress);
+            using var resultStream = new MemoryStream();
+            compressedStream.CopyTo(resultStream);
+            return resultStream.ToArray();
+        }
+        else if (encoding == "deflate")
+        {
+            using var compressedStream = new DeflateStream(new MemoryStream(data), CompressionMode.Decompress);
+            using var resultStream = new MemoryStream();
+            compressedStream.CopyTo(resultStream);
+            return resultStream.ToArray();
+        }
+        else // identity or unknown
+        {
+            return data;
+        }
     }
 }
