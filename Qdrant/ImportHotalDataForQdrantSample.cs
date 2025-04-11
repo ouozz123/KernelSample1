@@ -13,11 +13,10 @@ internal class ImportHotalDataForQdrantSample : Sample
 {
     private static MemoryWebClient memoryServiceClient = null!;
 
-
     internal override async Task RunAsync(string apiKey)
     {
 #pragma warning disable SKEXP0010 // 類型僅供評估之用，可能會在未來更新中變更或移除。抑制此診斷以繼續。
-        var kernelBuilder = Kernel
+        var kernel = Kernel
             .CreateBuilder()
             .AddQdrantVectorStore("localhost")
             .AddOpenAITextEmbeddingGeneration(
@@ -34,26 +33,27 @@ internal class ImportHotalDataForQdrantSample : Sample
             .Build();
 
 
-        var embeddingGenerationService = kernelBuilder.GetRequiredService<ITextEmbeddingGenerationService>();
+        var embeddingGenerationService = kernel.GetRequiredService<ITextEmbeddingGenerationService>();
 
         ////從檔案中取得資料，並轉為 Hotel model，並儲存在 json 檔案中
     
         var fileName = "旅宿列表匯出_20250401113015_part1.txt";
         var vectorFileName = "旅宿列表匯出_20250401113015_part1.json";
         var vectorFilePath = PathHelper.GetFullFilePath(Path.Combine("Files", "Vector", vectorFileName));
-        var models = new List<Hotel>();
+
+        var hotels = new List<Hotel>();
         if (File.Exists(vectorFilePath))
         {
             var json = File.ReadAllText(vectorFilePath)!;
-            models = JsonSerializer.Deserialize<List<Hotel>>(json);
+            hotels = JsonSerializer.Deserialize<List<Hotel>>(json);
         }
         else
         {
             var lines = await ReadFileLinesAsync(fileName);
-            models = await ConvertModel(lines, embeddingGenerationService, true);
+            hotels = await ConvertModel(lines, embeddingGenerationService, true);
 
-            if(models != null && models.Any())
-                SaveVectorFile(models);
+            if(hotels != null && hotels.Any())
+                SaveVectorFile(hotels);
         }
 
         //初始化
@@ -64,12 +64,13 @@ internal class ImportHotalDataForQdrantSample : Sample
         var qdrantVectorStoreOptions = new QdrantVectorStoreOptions() { HasNamedVectors = false };
         var vectorStore = new QdrantVectorStore(qdrant, qdrantVectorStoreOptions);
         var hotel = vectorStore.GetCollection<ulong, Hotel>(hotelCollectionName);
-        //if (!await hotel.CollectionExistsAsync())
-        //await CreateOrDeleteCollection(hotel, hotelCollectionName);
 
-        //////更新資料至 Qdrant
-        //if (models != null && models.Any())
-        //    await CreateQdrantProint(models, hotel);
+        if (!await hotel.CollectionExistsAsync())
+            await CreateOrDeleteCollection(hotel, hotelCollectionName);
+
+        ////更新資料至 Qdrant
+        if (hotels != null && hotels.Any())
+            await CreateQdrantProint(hotels, hotel);
 
 
         //查詢 Qdrant

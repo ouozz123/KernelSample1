@@ -1,9 +1,11 @@
 ﻿using KernelSample.Qdrant.Model;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.VectorData;
 using Microsoft.KernelMemory;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.Qdrant;
 using Microsoft.SemanticKernel.Embeddings;
+using System.Text;
 using System.Text.Json;
 using Document = Microsoft.KernelMemory.Document;
 using QdrantClient = Qdrant.Client.QdrantClient;
@@ -15,7 +17,7 @@ internal class ImportHotalDataForQdrantSample2 : Sample
 
 
     internal override async Task RunAsync(string apiKey)
-    {
+    { 
 #pragma warning disable SKEXP0010 // 類型僅供評估之用，可能會在未來更新中變更或移除。抑制此診斷以繼續。
         var kernelBuilder = Kernel
             .CreateBuilder()
@@ -67,25 +69,6 @@ internal class ImportHotalDataForQdrantSample2 : Sample
         // await hotel.DeleteCollectionAsync();
         // await hotel.CreateCollectionIfNotExistsAsync();
 
-        // var model = new Hotel()
-        // {
-        //     Address = "台北市信義區松高路12號",
-        //     CityName = "台北市",
-        //     HotelName = "台北君悅酒店",
-        //     HotelId = 1,
-        //     IsSpringLabel = true,
-        //     Label = "五星級",
-        //     OpeningDate = "2023-01-01",
-        //     Phone = "02-1234-5678",
-        //     PostalCode = "110",
-        //     Type = "商務旅館",
-        //     Area = "信義區"
-        // };
-        // model.DescriptionEmbedding =  await embeddingGenerationService.GenerateEmbeddingAsync(model.Description);
-        // var upsertResult = await hotel.UpsertAsync(model);
-        // Console.WriteLine($"成功更新或插入的 ID：{upsertResult}");
-
-
         //案例1: 用 KEY 搜尋
         var record1 = await hotel.GetAsync(1, new() { IncludeVectors = true });
 
@@ -109,46 +92,7 @@ internal class ImportHotalDataForQdrantSample2 : Sample
         // }
     }
 
-    private async Task CreateQdrantProint(List<Hotel> models, IVectorStoreRecordCollection<ulong, Hotel> collection)
-    {
-        //foreach (var item in models)
-        //{
-        //   var result = await hotel.UpsertAsync(item);
-        //    Console.WriteLine($"成功更新或插入的 ID：{result}");
-        //}
-
-        await foreach (var result in collection.UpsertBatchAsync(models))
-        {
-            Console.WriteLine($"成功更新或插入的 ID：{result}");
-        }
-    }
-
-    /// <summary>
-    /// Creates a new collection after deleting an existing one, configuring it with specific vector parameters.
-    /// </summary>
-    /// <param name="qdrant">Used to interact with the Qdrant database for collection management.</param>
-    /// <param name="hotelCollectionName">Specifies the name of the collection to be deleted and recreated.</param>
-    /// <returns>No return value as the method performs asynchronous operations on the collection.</returns>
-    private async Task CreateOrDeleteCollection(IVectorStoreRecordCollection<ulong, Hotel> collection, string hotelCollectionName)
-    {
-        //刪除 collection
-        await collection.DeleteCollectionAsync();
-
-        //////重新建立 collection 
-        //var vectorsConfig = new VectorParams
-        //{
-        //    Size = 1536,  // 向量的維度,原本是128
-        //    Distance = Distance.Cosine  // 設定測量方式為 Cosine 相似度\
-        //    //MultivectorConfig = new MultiVectorConfig()
-        //    //{
-        //    //    Comparator = MultiVectorComparator.MaxSim
-        //    //}
-        //};
-        await collection.CreateCollectionAsync();
-        //await collection.RecreateCollectionAsync(vectorsConfig);
-    }
-
-    //static async Task ImportXlsxToQdrant(IKernelMemory memory, string filePath)
+    //static async Task (IKernelMemorImportXlsxToQdranty memory, string filePath)
     //{
     //    var texts = ReadXlsxFile(filePath);
     //    foreach (var text in texts)

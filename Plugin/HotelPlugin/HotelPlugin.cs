@@ -1,53 +1,54 @@
 ﻿using DocumentFormat.OpenXml.Drawing.Diagrams;
+using KernelSample.Qdrant;
 using KernelSample.Qdrant.Model;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Embeddings;
-using Microsoft.SemanticKernel.Memory;
-using MongoDB.Bson;
 using System.ComponentModel;
 
 namespace KernelSample.Plugin.HotelPlugin;
 public class HotelPlugin
 {
-    //private readonly IVectorStore store;
-    //private readonly ITextEmbeddingGenerationService embeddingService;
-    private readonly ISemanticTextMemory memory;
+    private readonly IVectorStore _store;
+    private readonly ITextEmbeddingGenerationService _embeddingService;
 
     public HotelPlugin(
-        //[FromKeyedServices("QdrantStore")] IVectorStore store, 
-        //ITextEmbeddingGenerationService embeddingService
-        ISemanticTextMemory memory
-        )
+        [FromKeyedServices(HotelPlugnDemo.QdrantServiceId)] IVectorStore store, 
+        ITextEmbeddingGenerationService embeddingService)
     {
-        this.memory = memory;
-        //this.store = store;
-        //this.embeddingService = embeddingService;
+        this._store = store;
+        this._embeddingService = embeddingService;
     }
 
     [KernelFunction("SearchHotel")]
-    [Description("根據用戶問題獲取相關的酒店信息")]
-    public async Task<List<Hotel2>> SearchHotel(string keyword)
-    {
-        //函數名稱只能包含 ASCII 字母、數字和底線：「取得飯店資訊」不是有效名稱。 (參數‘函數名稱’)’
-        var searchResult =  memory.SearchAsync("hotel2", keyword, minRelevanceScore: 0.3);
+    [Description("根據用戶問題獲取相關的 hotel 信息")]
+    public async Task<List<Hotel2>> SearchHotel([Description("請給我完整的旅館查詢關鍵字")] string search)
+    { 
+        //向量搜尋
+        var searchEmbedding = await _embeddingService.GenerateEmbeddingAsync(search);
 
-        var result = new List<Hotel2>();
-        await foreach (var item in searchResult)
-        {
-            Console.WriteLine(item.ToJson());
-            //result.Add(new Hotel2() { HotelName = item.Metadata. })
-        }      
-
-        return new List<Hotel2>()
-        {
-            new Hotel2()
+        var hotel2 = _store.GetCollection<ulong, Hotel2>(HotelPlugnDemo.HotelCollectionName);
+        var record2 = await hotel2.VectorizedSearchAsync(searchEmbedding, new()
             {
-                HotelName = "澎湖旅館",
-                Address = "澎湖縣馬公市中正路1號",
-                Description = "澎湖旅館位於澎湖縣馬公市中正路1號，類別為旅館",
+                Top = 3 //只抓三筆
+            });
+
+        var hotel2s = new List<Hotel2>();
+
+        if (record2 != null)
+            await foreach (var item in record2.Results)
+            {
+                hotel2s.Add(new Hotel2()
+                {
+                    HotelName = item.Record.HotelName,
+                    Description = item.Record.Description,
+                    Address = item.Record.Address,
+                });
+
+                Console.WriteLine($"搜尋結果：{item.Record.HotelName} - {item.Record.Description} - {item.Score}");
             }
-        };
+
+        return hotel2s;
     }
 }

@@ -50,7 +50,7 @@ internal class SearchQdrantByLog : Sample
 
         var builder = Kernel.CreateBuilder();
 
-        var loggingInterceptor = new LoggingInterceptor(loggerFactory.CreateLogger<LoggingInterceptor>());
+        var loggingInterceptor = new LoggingInterceptor(loggerFactory);
 
         var channel = GrpcChannel.ForAddress("http://localhost:6334", new GrpcChannelOptions
         {

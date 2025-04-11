@@ -14,6 +14,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.3" />
     <PackageReference Include="Microsoft.KernelMemory" Version="0.98.250324.1" />
     <PackageReference Include="Microsoft.KernelMemory.Core" Version="0.98.250324.1" />
+    <PackageReference Include="Microsoft.KernelMemory.DataFormats.AzureAIDocIntel" Version="0.98.250324.1" />
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.45.0" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.Qdrant" Version="1.44.0-preview" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.2" />
@@ -23,11 +24,25 @@
   <ItemGroup>
     <Folder Include="Files\Vector\" />
     <Folder Include="VectorFiles\" />
-    <Folder Include="Plugin\NewFolder\" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="KernelSample.sln" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- <None Update="Files\旅宿列表匯出_20250401113015_part2.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Files\錢進系統icon.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Files\錢進系統MI操作手冊20241211.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None> -->
+    <None Update="Files\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
